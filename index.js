@@ -9,15 +9,28 @@ app.get('/', (req, res) => {
   res.json({ status: 'Ascend Backend attivo!' });
 });
 
-// Cerca un'immagine pertinente su Unsplash (gratuito, no API key richiesta per source.unsplash.com)
-function getProductImageUrl(productName) {
-  const query = encodeURIComponent(productName.split(' ').slice(0, 3).join(' '));
-  return `https://source.unsplash.com/800x800/?${query}`;
+const PEXELS_API_KEY = 'goxU2sr7FaRRiyghnp6Z7qJkRvdTkLgKu72Gr0LncgJFXpS8eQvzoWVM';
+
+// Cerca una foto pertinente su Pexels in base al nome del prodotto
+async function getProductImageUrl(productName) {
+  try {
+    const query = encodeURIComponent(productName.split(' ').slice(0, 3).join(' '));
+    const response = await fetch(`https://api.pexels.com/v1/search?query=${query}&per_page=1&orientation=square`, {
+      headers: { 'Authorization': PEXELS_API_KEY }
+    });
+    const data = await response.json();
+    if (data.photos && data.photos.length > 0) {
+      return data.photos[0].src.large;
+    }
+    return `https://picsum.photos/seed/${encodeURIComponent(productName)}/800/800`;
+  } catch (err) {
+    return `https://picsum.photos/seed/${encodeURIComponent(productName)}/800/800`;
+  }
 }
 
 async function attachImageToProduct(cleanUrl, shopifyKey, productId, productName) {
   try {
-    const imageUrl = getProductImageUrl(productName);
+    const imageUrl = await getProductImageUrl(productName);
     const response = await fetch(`https://${cleanUrl}/admin/api/2024-01/products/${productId}/images.json`, {
       method: 'POST',
       headers: {
